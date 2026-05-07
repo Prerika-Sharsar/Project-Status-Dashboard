@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IT Project Status Report</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">IT</div>
+    <div class="header-title">
+      <h1>IT Project Status Report</h1>
+      <p>Executive Dashboard &nbsp;·&nbsp; Portfolio Overview</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-block">
+      <label>Reporting Period</label>
+      <span id="reportDate">7 May 2026</span>
+    </div>
+    <div class="meta-block">
+      <label>Total Initiatives</label>
+      <span id="metaCount">5 Initiatives</span>
+    </div>
+    <div class="meta-block">
+      <label>Total Budget</label>
+      <span id="metaBudget">$1,280,000</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS ROW -->
+<div class="stats-row">
+  <div class="stat-block">
+    <div class="stat-dot total"></div>
+    <div>
+      <div class="stat-num" id="statTotal">5</div>
+      <div class="stat-label">Total Projects</div>
+    </div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-dot green"></div>
+    <div>
+      <div class="stat-num" id="statOnTrack">3</div>
+      <div class="stat-label">On Track</div>
+    </div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-dot amber"></div>
+    <div>
+      <div class="stat-num" id="statAtRisk">1</div>
+      <div class="stat-label">At Risk</div>
+    </div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-dot red"></div>
+    <div>
+      <div class="stat-num" id="statCritical">1</div>
+      <div class="stat-label">Critical</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="overview">Overview</button>
+  <button class="tab-btn" data-tab="initiative">Initiatives</button>
+  <button class="tab-btn" data-tab="ai">AI</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- Summary Cards -->
+  <div class="summary-cards">
+    <div class="card navy-accent">
+      <div class="card-label">Total Projects</div>
+      <div class="card-value" id="cardTotal">5</div>
+      <div class="card-sub">Across all categories</div>
+    </div>
+    <div class="card green-accent">
+      <div class="card-label">On Track</div>
+      <div class="card-value" id="cardOnTrack">3</div>
+      <div class="card-sub">Within budget & schedule</div>
+    </div>
+    <div class="card amber-accent">
+      <div class="card-label">At Risk</div>
+      <div class="card-value" id="cardAtRisk">1</div>
+      <div class="card-sub">Needs attention</div>
+    </div>
+    <div class="card red-accent">
+      <div class="card-label">Delayed / Critical</div>
+      <div class="card-value" id="cardDelayed">1</div>
+      <div class="card-sub">Immediate action required</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span class="section-title" id="registerTitle">Portfolio Initiative Register</span>
+      <input type="text" class="search-box" id="searchBox" placeholder="Search initiative or vendor…" />
+      <select class="select-filter" id="statusFilter">
+        <option value="">All Statuses</option>
+        <option>On Track</option>
+        <option>At Risk</option>
+        <option>Delayed</option>
+        <option>Completed</option>
+      </select>
+      <select class="select-filter" id="ragFilter">
+        <option value="">All RAG</option>
+        <option>G</option>
+        <option>A</option>
+        <option>R</option>
+      </select>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn-export" type="button">⬇ Export CSV</button>
+      <button class="btn-add" type="button">＋ Add New Project</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Initiative</th>
+          <th>Category</th>
+          <th>Vendor / Partner</th>
+          <th>Budget (INR)</th>
+          <th>% Complete</th>
+          <th>Status</th>
+          <th>RAG</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📋</div>
+      No projects match your current filters.
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add New Project</h2>
+      <button class="modal-close" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Initiative Name *</label>
+          <input type="text" id="fName" placeholder="e.g. ERP System Upgrade"/>
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select id="fCategory">
+            <option value="">— Select —</option>
+            <option value="Initiative">Initiative</option>
+            <option value="AI">AI</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Vendor / Partner</label>
+          <input type="text" id="fVendor" placeholder="e.g. SAP, AWS"/>
+        </div>
+        <div class="form-group">
+          <label>Budget (INR)</label>
+          <input type="number" id="fBudget" placeholder="e.g. 480000" min="0"/>
+        </div>
+        <div class="form-group">
+          <label>% Complete (0–100)</label>
+          <input type="number" id="fPct" placeholder="e.g. 65" min="0" max="100"/>
+        </div>
+        <div class="form-group">
+          <label>Status *</label>
+          <select id="fStatus">
+            <option value="">— Select —</option>
+            <option>On Track</option>
+            <option>At Risk</option>
+            <option>Delayed</option>
+            <option>Completed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>RAG Rating</label>
+          <select id="fRag">
+            <option value="G">G — Green</option>
+            <option value="A">A — Amber</option>
+            <option value="R">R — Red</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea id="fNotes" placeholder="Brief update…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" type="button">Cancel</button>
+      <button class="btn-save" type="button">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<script src="scripts.js"></script>
+</body>
+</html>
