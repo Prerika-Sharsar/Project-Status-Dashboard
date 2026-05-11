@@ -75,30 +75,6 @@
 
 <!-- MAIN -->
 <div class="main">
-  <!-- Summary Cards -->
-  <div class="summary-cards">
-    <div class="card navy-accent">
-      <div class="card-label">Total Projects</div>
-      <div class="card-value" id="cardTotal">5</div>
-      <div class="card-sub">Across all categories</div>
-    </div>
-    <div class="card green-accent">
-      <div class="card-label">On Track</div>
-      <div class="card-value" id="cardOnTrack">3</div>
-      <div class="card-sub">Within budget & schedule</div>
-    </div>
-    <div class="card amber-accent">
-      <div class="card-label">At Risk</div>
-      <div class="card-value" id="cardAtRisk">1</div>
-      <div class="card-sub">Needs attention</div>
-    </div>
-    <div class="card red-accent">
-      <div class="card-label">Delayed / Critical</div>
-      <div class="card-value" id="cardDelayed">1</div>
-      <div class="card-sub">Immediate action required</div>
-    </div>
-  </div>
-
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="toolbar-left">
@@ -119,8 +95,10 @@
       </select>
     </div>
     <div class="toolbar-right">
+      <button class="btn-import" type="button">⬆ Import CSV</button>
       <button class="btn-export" type="button">⬇ Export CSV</button>
       <button class="btn-add" type="button">＋ Add New Project</button>
+      <input type="file" id="importFileInput" accept="text/csv" style="display:none" />
     </div>
   </div>
 
@@ -137,7 +115,7 @@
           <th>Status</th>
           <th>RAG</th>
           <th>Notes</th>
-          <th>Actions</th>
+          <!-- <th>Actions</th> -->
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
@@ -146,6 +124,11 @@
       <div class="empty-icon">📋</div>
       No projects match your current filters.
     </div>
+  </div>
+  <div class="pagination">
+    <button type="button" class="page-btn" id="prevPage">← Previous</button>
+    <span class="page-info" id="pageInfo">Page 1 of 1</span>
+    <button type="button" class="page-btn" id="nextPage">Next →</button>
   </div>
 </div>
 

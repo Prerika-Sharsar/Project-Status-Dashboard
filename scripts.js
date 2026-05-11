@@ -9,6 +9,8 @@ let projects = [
 let nextId = 6;
 let editingId = null;
 let activeTab = 'overview';
+let currentPage = 1;
+const PAGE_SIZE = 5;
 
 const STORAGE_KEY = 'itProjectStatusProjects';
 const NEXT_ID_KEY = 'itProjectStatusNextId';
@@ -48,6 +50,7 @@ function saveProjects() {
 
 function switchTab(tab) {
   activeTab = tab;
+  currentPage = 1;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
 
@@ -80,14 +83,20 @@ function renderTable() {
              : projects.filter(p => p.category === (activeTab === 'ai' ? 'AI' : 'Initiative'));
   updateStats(base);
 
+  const totalPages = filtered.length ? Math.ceil(filtered.length / PAGE_SIZE) : 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+
   if (filtered.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
+    updatePagination(totalPages);
     return;
   }
+
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   empty.style.display = 'none';
 
-  tbody.innerHTML = filtered.map(p => {
+  tbody.innerHTML = pageItems.map(p => {
     const sc  = statusClass[p.status] || 'on-track';
     const col = progressColors[p.rag] || '#4caf7d';
     const catClass = p.category === 'AI' ? 'ai' : 'initiative';
@@ -117,14 +126,32 @@ function renderTable() {
         </div>
       </td>
       <td><div class="notes" title="${escHtml(p.notes)}">${escHtml(p.notes)}</div></td>
-      <td>
+      <!-- <td>
         <div class="action-wrap">
           <button type="button" class="act-btn edit" data-action="edit" data-id="${p.id}">Edit</button>
           <button type="button" class="act-btn remove" data-action="remove" data-id="${p.id}">Remove</button>
         </div>
-      </td>
+      </td> -->
     </tr>`;
   }).join('');
+
+  updatePagination(totalPages);
+}
+
+function updatePagination(totalPages) {
+  const prev = document.getElementById('prevPage');
+  const next = document.getElementById('nextPage');
+  const info = document.getElementById('pageInfo');
+
+  if (!prev || !next || !info) return;
+  prev.disabled = currentPage <= 1;
+  next.disabled = currentPage >= totalPages;
+  info.textContent = `Page ${currentPage} of ${totalPages}`;
+}
+
+function changePage(delta) {
+  currentPage = Math.max(1, currentPage + delta);
+  renderTable();
 }
 
 function updateStats(base) {
@@ -138,10 +165,6 @@ function updateStats(base) {
   document.getElementById('statOnTrack').textContent = onTrack;
   document.getElementById('statAtRisk').textContent  = atRisk;
   document.getElementById('statCritical').textContent= delayed;
-  document.getElementById('cardTotal').textContent   = total;
-  document.getElementById('cardOnTrack').textContent = onTrack;
-  document.getElementById('cardAtRisk').textContent  = atRisk;
-  document.getElementById('cardDelayed').textContent = delayed;
   document.getElementById('metaCount').textContent   = `${total} Initiatives`;
   document.getElementById('metaBudget').textContent  = '₹' + budget.toLocaleString();
 }
@@ -228,6 +251,86 @@ function exportCSV() {
   a.click();
 }
 
+function handleImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const csvText = reader.result;
+      const imported = parseImportCsv(csvText);
+      if (!imported.length) {
+        alert('No valid rows found in the CSV file.');
+        return;
+      }
+      imported.forEach(row => projects.push({ id: nextId++, ...row }));
+      saveProjects();
+      currentPage = 1;
+      renderTable();
+      alert(`Imported ${imported.length} ${imported.length === 1 ? 'project' : 'projects'} successfully.`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to import CSV. Please check the file format and try again.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseImportCsv(text) {
+  const lines = text.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '');
+  if (!lines.length) return [];
+
+  const header = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+  const required = ['name','category','vendor','budget','%complete','status','rag','notes'];
+  const indexes = required.map(k => header.findIndex(h => h === k));
+  if (indexes.some(i => i === -1)) {
+    throw new Error('CSV header must include Name, Category, Vendor, Budget, %Complete, Status, RAG, Notes');
+  }
+
+  return lines.slice(1).map(line => {
+    const values = parseCsvLine(line);
+    return {
+      name: values[indexes[0]] || '',
+      category: values[indexes[1]] || '',
+      vendor: values[indexes[2]] || '',
+      budget: parseInt(values[indexes[3]], 10) || 0,
+      pct: Math.min(100, Math.max(0, parseInt(values[indexes[4]], 10) || 0)),
+      status: values[indexes[5]] || '',
+      rag: (values[indexes[6]] || '').toUpperCase(),
+      notes: values[indexes[7]] || ''
+    };
+  }).filter(item => item.name && item.category && item.status && ['G','A','R'].includes(item.rag));
+}
+
+function parseCsvLine(line) {
+  const result = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        field += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(field);
+      field = '';
+    } else {
+      field += char;
+    }
+  }
+
+  result.push(field);
+  return result;
+}
+
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -239,9 +342,13 @@ function init() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  document.getElementById('searchBox').addEventListener('input', renderTable);
-  document.getElementById('statusFilter').addEventListener('change', renderTable);
-  document.getElementById('ragFilter').addEventListener('change', renderTable);
+  document.getElementById('searchBox').addEventListener('input', () => { currentPage = 1; renderTable(); });
+  document.getElementById('statusFilter').addEventListener('change', () => { currentPage = 1; renderTable(); });
+  document.getElementById('ragFilter').addEventListener('change', () => { currentPage = 1; renderTable(); });
+  document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+  document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+  document.querySelector('.btn-import').addEventListener('click', () => document.getElementById('importFileInput').click());
+  document.getElementById('importFileInput').addEventListener('change', handleImportFile);
   document.querySelector('.btn-export').addEventListener('click', exportCSV);
   document.querySelector('.btn-add').addEventListener('click', openAddModal);
   document.querySelector('.modal-close').addEventListener('click', closeModal);
