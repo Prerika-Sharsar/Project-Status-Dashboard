@@ -6,11 +6,26 @@ let projects = [
   { id: 4, name: 'CRM Implementation',      category: 'Initiative', vendor: 'Salesforce',         budget: 210000, pct: 20, status: 'Delayed',  rag: 'R', notes: 'Scope creep escalated to steering committee' },
   { id: 5, name: 'AI Chatbot Platform',     category: 'AI',         vendor: 'OpenAI / Internal',  budget: 95000,  pct: 55, status: 'On Track', rag: 'G', notes: 'Pilot live; expanding to customer support team' },
 ];
+let helpdeskItems = [
+  { id: 101, name: 'Service Desk Portal Upgrade', description: 'Improve ticket routing and automations', category: 'Helpdesk', budget: 125000, note: 'New chatbot integration being tested', vendor: 'Freshservice', priority: 'High', sla: 'Pending' },
+  { id: 102, name: 'Password Reset Automation', description: 'Reduce manual password support calls', category: 'Helpdesk', budget: 52000, note: 'Workflow scripts are in development', vendor: 'Okta', priority: 'Medium', sla: 'Pending' },
+  { id: 103, name: 'Incident Response Refresh', description: 'Update playbooks for SLA compliance', category: 'Helpdesk', budget: 76000, note: 'Training scheduled with the support team', vendor: 'ServiceNow', priority: 'High', sla: 'Overdue' },
+  { id: 104, name: 'Knowledge Base Expansion', description: 'Grow self-service content for first-call resolution', category: 'Helpdesk', budget: 42000, note: 'Content review is underway', vendor: 'Zendesk', priority: 'Low', sla: 'Pending' },
+  { id: 105, name: 'Ticket Escalation Alerts', description: 'Add automatic alerts for critical tickets', category: 'Helpdesk', budget: 98000, note: 'Alerts tested in staging environment', vendor: 'Freshworks', priority: 'High', sla: 'Pending' },
+];
 let nextId = 6;
 let editingId = null;
 let activeTab = 'overview';
 let currentPage = 1;
 const PAGE_SIZE = 5;
+const HELP_DESK_TAB = 'helpdesk';
+
+const pageTitles = {
+  overview: 'Portfolio Initiative Register',
+  initiative: 'Initiative Projects',
+  ai: 'AI Projects',
+  [HELP_DESK_TAB]: 'Helpdesk Tickets'
+};
 
 const STORAGE_KEY = 'itProjectStatusProjects';
 const NEXT_ID_KEY = 'itProjectStatusNextId';
@@ -51,37 +66,81 @@ function saveProjects() {
 function switchTab(tab) {
   activeTab = tab;
   currentPage = 1;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('registerTitle').textContent = pageTitles[tab] || pageTitles.overview;
 
-  const titles = { overview: 'Portfolio Initiative Register', initiative: 'Initiative Projects', ai: 'AI Projects' };
-  document.getElementById('registerTitle').textContent = titles[tab];
+  const headerTitle = document.querySelector('.header-title h1');
+  const headerDesc = document.querySelector('.header-title p');
+  if (activeTab === HELP_DESK_TAB) {
+    if (headerTitle) headerTitle.textContent = 'IT Helpdesk Dashboard';
+    if (headerDesc) headerDesc.textContent = 'Support ticket overview · Service delivery summary';
+  } else {
+    if (headerTitle) headerTitle.textContent = 'IT Project Status Report';
+    if (headerDesc) headerDesc.textContent = 'Executive Dashboard · Portfolio Overview';
+  }
+
+  updateToolbarVisibility();
   renderTable();
 }
 
-function getFilteredProjects() {
+function getCurrentItems() {
+  return activeTab === HELP_DESK_TAB ? helpdeskItems : projects;
+}
+
+function getFilteredItems() {
   const search = document.getElementById('searchBox').value.toLowerCase();
   const statusF = document.getElementById('statusFilter').value;
   const ragF    = document.getElementById('ragFilter').value;
 
-  return projects.filter(p => {
+  return getCurrentItems().filter(p => {
     if (activeTab === 'initiative' && p.category !== 'Initiative') return false;
     if (activeTab === 'ai'         && p.category !== 'AI')         return false;
-    if (search && !p.name.toLowerCase().includes(search) && !p.vendor.toLowerCase().includes(search)) return false;
-    if (statusF && p.status !== statusF) return false;
-    if (ragF    && p.rag    !== ragF)    return false;
+    if (activeTab === HELP_DESK_TAB && p.category !== 'Helpdesk') return false;
+
+    if (search) {
+      const haystack = [p.name, p.description, p.note, p.vendor, p.notes].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+
+    if (activeTab !== HELP_DESK_TAB) {
+      if (statusF && p.status !== statusF) return false;
+      if (ragF    && p.rag    !== ragF)    return false;
+    }
+
     return true;
   });
 }
 
+function updateToolbarVisibility() {
+  const hidden = activeTab === HELP_DESK_TAB;
+  ['.btn-import', '.btn-export', '.btn-add'].forEach(selector => {
+    const el = document.querySelector(selector);
+    if (el) el.style.display = hidden ? 'none' : '';
+  });
+
+  ['statusFilter', 'ragFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hidden ? 'none' : '';
+  });
+}
+
 function renderTable() {
-  const filtered = getFilteredProjects();
+  const filtered = getFilteredItems();
   const tbody = document.getElementById('tableBody');
   const empty = document.getElementById('emptyState');
+  const thead = document.querySelector('.table-wrap table thead');
 
   const base = activeTab === 'overview' ? projects
-             : projects.filter(p => p.category === (activeTab === 'ai' ? 'AI' : 'Initiative'));
+             : activeTab === 'initiative' ? projects.filter(p => p.category === 'Initiative')
+             : activeTab === 'ai' ? projects.filter(p => p.category === 'AI')
+             : helpdeskItems;
   updateStats(base);
+
+  const headers = activeTab === HELP_DESK_TAB
+    ? ['Initiative', 'Description', 'Category', 'Budget', 'Note', 'Vendor Name']
+    : ['Initiative', 'Category', 'Vendor / Partner', 'Budget (INR)', '% Complete', 'Status', 'RAG', 'Notes'];
+
+  thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
 
   const totalPages = filtered.length ? Math.ceil(filtered.length / PAGE_SIZE) : 1;
   if (currentPage > totalPages) currentPage = totalPages;
@@ -97,6 +156,18 @@ function renderTable() {
   empty.style.display = 'none';
 
   tbody.innerHTML = pageItems.map(p => {
+    if (activeTab === HELP_DESK_TAB) {
+      return `
+      <tr>
+        <td><div class="init-name">${escHtml(p.name)}</div></td>
+        <td>${escHtml(p.description)}</td>
+        <td><span class="cat-pill helpdesk">${escHtml(p.category)}</span></td>
+        <td class="budget">₹${p.budget.toLocaleString()}</td>
+        <td>${escHtml(p.note)}</td>
+        <td class="vendor">${escHtml(p.vendor)}</td>
+      </tr>`;
+    }
+
     const sc  = statusClass[p.status] || 'on-track';
     const col = progressColors[p.rag] || '#4caf7d';
     const catClass = p.category === 'AI' ? 'ai' : 'initiative';
@@ -126,12 +197,6 @@ function renderTable() {
         </div>
       </td>
       <td><div class="notes" title="${escHtml(p.notes)}">${escHtml(p.notes)}</div></td>
-      <!-- <td>
-        <div class="action-wrap">
-          <button type="button" class="act-btn edit" data-action="edit" data-id="${p.id}">Edit</button>
-          <button type="button" class="act-btn remove" data-action="remove" data-id="${p.id}">Remove</button>
-        </div>
-      </td> -->
     </tr>`;
   }).join('');
 
@@ -155,6 +220,32 @@ function changePage(delta) {
 }
 
 function updateStats(base) {
+  const metaLabels = document.querySelectorAll('.meta-block label');
+  const metaValues = document.querySelectorAll('.meta-block span');
+
+  if (activeTab === HELP_DESK_TAB) {
+    const total = base.length;
+    const highPriority = base.filter(p => p.priority === 'High').length;
+    const pendingSla = base.filter(p => p.sla === 'Pending').length;
+    const budget = base.reduce((s, p) => s + p.budget, 0);
+
+    document.getElementById('statTotal').textContent   = total;
+    document.getElementById('statOnTrack').textContent = highPriority;
+    document.getElementById('statAtRisk').textContent  = pendingSla;
+    document.getElementById('statCritical').textContent= budget.toLocaleString();
+
+    const statLabels = document.querySelectorAll('.stat-label');
+    if (statLabels[0]) statLabels[0].textContent = 'Total Tickets';
+    if (statLabels[1]) statLabels[1].textContent = 'High Priority';
+    if (statLabels[2]) statLabels[2].textContent = 'Pending SLA';
+    if (statLabels[3]) statLabels[3].textContent = 'Total Budget';
+
+    if (metaLabels[1]) metaLabels[1].textContent = 'Total Tickets';
+    if (metaValues[1]) metaValues[1].textContent = `${total} Tickets`;
+    if (metaValues[2]) metaValues[2].textContent = '₹' + budget.toLocaleString();
+    return;
+  }
+
   const total     = base.length;
   const onTrack   = base.filter(p => p.status === 'On Track' || p.status === 'Completed').length;
   const atRisk    = base.filter(p => p.status === 'At Risk').length;
@@ -166,7 +257,9 @@ function updateStats(base) {
   document.getElementById('statAtRisk').textContent  = atRisk;
   document.getElementById('statCritical').textContent= delayed;
   document.getElementById('metaCount').textContent   = `${total} Initiatives`;
-  document.getElementById('metaBudget').textContent  = '₹' + budget.toLocaleString();
+  if (metaLabels[1]) metaLabels[1].textContent = 'Total Initiatives';
+  if (metaValues[1]) metaValues[1].textContent = `${total} Initiatives`;
+  if (metaValues[2]) metaValues[2].textContent = '₹' + budget.toLocaleString();
 }
 
 function openAddModal() {
@@ -237,17 +330,22 @@ function removeProject(id) {
 }
 
 function exportCSV() {
-  const filtered = getFilteredProjects();
-  const header = ['Name','Category','Vendor','Budget','%Complete','Status','RAG','Notes'];
-  const rows = filtered.map(p =>
-    [p.name, p.category, p.vendor, p.budget, p.pct, p.status, p.rag, p.notes]
-      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
-  );
+  const filtered = getFilteredItems();
+  const isHelpdesk = activeTab === HELP_DESK_TAB;
+  const header = isHelpdesk
+    ? ['Initiative', 'Description', 'Category', 'Budget', 'Note', 'Vendor Name']
+    : ['Name','Category','Vendor','Budget','%Complete','Status','RAG','Notes'];
+  const rows = filtered.map(p => {
+    const values = isHelpdesk
+      ? [p.name, p.description, p.category, p.budget, p.note, p.vendor]
+      : [p.name, p.category, p.vendor, p.budget, p.pct, p.status, p.rag, p.notes];
+    return values.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  });
   const csv  = [header.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a    = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'it-project-status.csv';
+  a.download = isHelpdesk ? 'helpdesk-tickets.csv' : 'it-project-status.csv';
   a.click();
 }
 
@@ -337,6 +435,13 @@ function escHtml(str) {
 
 function init() {
   loadStoredData();
+
+  const helpdeskBtn = document.createElement('button');
+  helpdeskBtn.type = 'button';
+  helpdeskBtn.className = 'tab-btn';
+  helpdeskBtn.dataset.tab = HELP_DESK_TAB;
+  helpdeskBtn.textContent = 'Helpdesk';
+  document.querySelector('.tab-nav').append(helpdeskBtn);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
